@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSiteSettings, updateSiteSettings, SiteSettings as SiteSettingsType, ServiceBlock } from "../../api/admin";
-import { getMedia, Media } from "../../api/media";
+import { getMedia, uploadMedia, Media } from "../../api/media";
 import { getMediaUrl } from "../../config/api";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -25,6 +25,8 @@ export default function SiteSettings() {
   const [faviconDialogOpen, setFaviconDialogOpen] = useState(false);
   const [landingIconDialogOpen, setLandingIconDialogOpen] = useState(false);
   const [heroBackgroundDialogOpen, setHeroBackgroundDialogOpen] = useState(false);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconUploading, setFaviconUploading] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -164,6 +166,26 @@ export default function SiteSettings() {
     setSettings({ ...settings, faviconUrl });
     setFaviconDialogOpen(false);
     toast.success(`Favicon updated to ${media.originalName}`);
+  };
+
+  const handleFaviconUpload = async () => {
+    if (!faviconFile) {
+      toast.error('Please select a favicon file');
+      return;
+    }
+
+    try {
+      setFaviconUploading(true);
+      const uploaded = await uploadMedia(faviconFile, 'logo', 'Favicon');
+      setFaviconFile(null);
+      await loadLogoMedia();
+      selectFavicon(uploaded);
+    } catch (error: any) {
+      console.error('[SiteSettings] Failed to upload favicon:', error);
+      toast.error(`Failed to upload favicon: ${error.message}`);
+    } finally {
+      setFaviconUploading(false);
+    }
   };
 
   const updateField = (field: keyof SiteSettingsType, value: any) => {
@@ -547,6 +569,21 @@ export default function SiteSettings() {
                       )}
                     </DialogContent>
                   </Dialog>
+                </div>
+                <div className="mt-3 flex flex-col gap-2">
+                  <Input
+                    type="file"
+                    accept="image/png,image/x-icon,image/svg+xml"
+                    onChange={(event) => setFaviconFile(event.target.files?.[0] || null)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleFaviconUpload}
+                    disabled={!faviconFile || faviconUploading}
+                  >
+                    {faviconUploading ? "Uploading..." : "Upload Favicon"}
+                  </Button>
                 </div>
                 {settings.faviconUrl && (
                   <p className="text-xs text-muted-foreground mt-1">
