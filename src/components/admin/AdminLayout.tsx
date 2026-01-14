@@ -18,19 +18,20 @@ import {
 import { useEffect } from "react";
 
 export function AdminLayout() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, loading } = useAuth();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    if (loading) return;
     if (!isAuthenticated) {
       navigate('/login');
     } else if (!user?.role || user.role === 'user') {
       // User is authenticated but doesn't have admin privileges
       navigate('/');
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, loading, navigate]);
 
   const handleLogout = () => {
     logout();

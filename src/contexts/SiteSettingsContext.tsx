@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getPublicSiteSettings, SiteSettings } from '../api/admin';
+import { isSupabaseConfigured } from '../lib/supabase';
 import { getMediaUrl } from '../config/api';
 
 interface SiteSettingsContextType {
@@ -79,14 +80,19 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => 
 };
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<SiteSettings | null>(FALLBACK_SETTINGS);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSettings = async () => {
     try {
-      setLoading(true);
+      setLoading(false);
       setError(null);
+      if (!isSupabaseConfigured) {
+        setError('Supabase credentials are missing.');
+        setSettings((current) => current ?? FALLBACK_SETTINGS);
+        return;
+      }
       console.log('[SiteSettingsContext] Fetching site settings');
       const data = await withTimeout(getPublicSiteSettings(), 8000);
       console.log('[SiteSettingsContext] Settings loaded:', data);
@@ -101,8 +107,6 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       console.error('[SiteSettingsContext] Error loading settings:', errorMessage);
       setError(errorMessage);
       setSettings((current) => current ?? FALLBACK_SETTINGS);
-    } finally {
-      setLoading(false);
     }
   };
 

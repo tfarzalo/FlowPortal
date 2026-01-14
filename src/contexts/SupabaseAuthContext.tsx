@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface User {
@@ -46,6 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const safetyTimer = setTimeout(() => {
       setLoading(false);
     }, 8000);
+
+    if (!isSupabaseConfigured) {
+      console.error('[Auth] Supabase credentials are missing.');
+      setLoading(false);
+      return () => clearTimeout(safetyTimer);
+    }
 
     // Check active session
     withTimeout(supabase.auth.getSession(), 8000)
@@ -130,13 +136,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<User> => {
     try {
+      if (!isSupabaseConfigured) {
+        throw new Error('Supabase credentials are missing.');
+      }
+
       setLoading(true);
       console.log('[Auth] Attempting login for:', email);
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        8000
+      );
 
       if (error) {
         console.error('[Auth] Login error:', error);
@@ -157,6 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string) => {
     try {
+      if (!isSupabaseConfigured) {
+        throw new Error('Supabase credentials are missing.');
+      }
+
       setLoading(true);
       console.log('[Auth] Attempting registration for:', email);
       
