@@ -12,8 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Switch } from "../../components/ui/switch";
 import { toast } from "sonner";
 import { Save, Image as ImageIcon, Plus, Trash2, X } from "lucide-react";
+import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 
 export default function SiteSettings() {
+  const { refetchSettings } = useSiteSettings();
   const [settings, setSettings] = useState<SiteSettingsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -131,6 +133,7 @@ export default function SiteSettings() {
       });
       const updatedSettings = await updateSiteSettings(settings);
       setSettings(updatedSettings);
+      await refetchSettings();
       console.log('[SiteSettings] Settings saved successfully');
       toast.success("Settings saved successfully");
     } catch (error: any) {

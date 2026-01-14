@@ -1,4 +1,4 @@
-import api from './api';
+import { submitForm } from './forms';
 
 // Description: Submit a booking request
 // Endpoint: POST /api/forms/booking
@@ -17,11 +17,15 @@ export const submitBooking = async (data: {
 }) => {
   console.log('Submitting booking request:', data);
   try {
-    const response = await api.post('/api/forms/booking', data);
-    return response.data;
+    const entry = await submitForm('booking', data);
+    return {
+      success: true,
+      message: 'Booking request submitted successfully!',
+      bookingId: entry.id || entry._id || '',
+    };
   } catch (error: unknown) {
     console.error('Error submitting booking:', error);
-    const err = error as { response?: { data?: { error?: string } }; message?: string };
-    throw new Error(err?.response?.data?.error || err?.message || 'An error occurred');
+    const err = error as { message?: string };
+    throw new Error(err?.message || 'An error occurred');
   }
 };

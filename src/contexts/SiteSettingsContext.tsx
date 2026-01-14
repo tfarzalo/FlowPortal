@@ -23,6 +23,11 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       console.log('[SiteSettingsContext] Fetching site settings');
       const data = await getPublicSiteSettings();
       console.log('[SiteSettingsContext] Settings loaded:', data);
+      if (!data) {
+        console.warn('[SiteSettingsContext] No settings returned, leaving settings as null');
+        setSettings(null);
+        return;
+      }
       setSettings(data);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load site settings';

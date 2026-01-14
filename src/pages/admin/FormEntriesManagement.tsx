@@ -68,7 +68,7 @@ export default function FormEntriesManagement() {
       if (searchQuery) filters.searchQuery = searchQuery;
 
       const response = await getFormEntries(filters);
-      setEntries(response.entries);
+      setEntries(Array.isArray(response) ? response : []);
     } catch (error: any) {
       console.error('Error fetching entries:', error);
       toast.error('Failed to load form entries');
@@ -89,11 +89,11 @@ export default function FormEntriesManagement() {
   const handleViewEntry = async (id: string) => {
     try {
       const response = await getFormEntryById(id);
-      setSelectedEntry(response.entry);
+      setSelectedEntry(response);
       setViewDialogOpen(true);
 
       // Mark as read if it's new
-      if (response.entry.status === 'new') {
+      if (response.status === 'new') {
         await updateFormEntry(id, { status: 'read' });
         fetchEntries();
         fetchStats();
