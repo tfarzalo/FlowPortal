@@ -122,12 +122,86 @@ export interface SiteSettings {
   createdAt?: string;
 }
 
+const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  siteName: 'FlowPortal',
+  tagline: '',
+  siteUrl: '',
+  primaryColor: '#3B82F6',
+  secondaryColor: '#10B981',
+  contactEmail: '',
+  contactPhone: '',
+  address: '',
+  businessHours: {
+    monday: '9:00 AM - 5:00 PM',
+    tuesday: '9:00 AM - 5:00 PM',
+    wednesday: '9:00 AM - 5:00 PM',
+    thursday: '9:00 AM - 5:00 PM',
+    friday: '9:00 AM - 5:00 PM',
+    saturday: 'Closed',
+    sunday: 'Closed',
+  },
+  socialMedia: {},
+  comingSoonMode: false,
+  defaultTheme: 'dark',
+  buttonStyles: {
+    primaryButtonBg: '#2563eb',
+    primaryButtonText: '#ffffff',
+    primaryButtonHoverBg: '#1e40af',
+    primaryButtonHoverText: '#ffffff',
+    primaryButtonBorder: '0px',
+    primaryButtonBorderColor: '#2563eb',
+    secondaryButtonBg: 'transparent',
+    secondaryButtonText: '#2563eb',
+    secondaryButtonHoverBg: '#2563eb',
+    secondaryButtonHoverText: '#ffffff',
+    secondaryButtonBorder: '2px',
+    secondaryButtonBorderColor: '#2563eb',
+  },
+  landingPage: {
+    companyInfo: {},
+    serviceBlocks: [],
+  },
+};
+
+function mergeSiteSettings(base: SiteSettings, overrides?: Partial<SiteSettings>): SiteSettings {
+  if (!overrides) {
+    return { ...base };
+  }
+
+  return {
+    ...base,
+    ...overrides,
+    businessHours: {
+      ...base.businessHours,
+      ...overrides.businessHours,
+    },
+    socialMedia: {
+      ...base.socialMedia,
+      ...overrides.socialMedia,
+    },
+    buttonStyles: {
+      ...base.buttonStyles,
+      ...overrides.buttonStyles,
+    },
+    landingPage: {
+      ...base.landingPage,
+      ...overrides.landingPage,
+      companyInfo: {
+        ...base.landingPage.companyInfo,
+        ...overrides.landingPage?.companyInfo,
+      },
+      serviceBlocks: overrides.landingPage?.serviceBlocks ?? base.landingPage.serviceBlocks,
+    },
+  };
+}
+
 export async function getSiteSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase
     .from('site_settings')
     .select('*')
+    .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('[Supabase] Error fetching site settings:', error);
@@ -135,43 +209,49 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   }
 
   if (!data) {
-    throw new Error('Site settings not found');
+    return { ...DEFAULT_SITE_SETTINGS };
   }
 
-  const camelData = toCamelCase(data);
+  const camelData = toCamelCase(data) as SiteSettings;
   // Add _id for backward compatibility
-  return { ...camelData, _id: camelData.id };
+  return { ...mergeSiteSettings(DEFAULT_SITE_SETTINGS, camelData), _id: camelData.id };
 }
 
 export async function updateSiteSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
   // Remove _id if present, use id instead
   const { _id, ...cleanSettings } = settings;
   const id = _id || cleanSettings.id;
-  
-  if (!id) {
-    throw new Error('Settings ID is required for update');
-  }
+
+  const settingsPayload = id
+    ? cleanSettings
+    : mergeSiteSettings(DEFAULT_SITE_SETTINGS, cleanSettings as SiteSettings);
 
   // Transform to snake_case for database
-  const snakeSettings = toSnakeCase(cleanSettings);
+  const snakeSettings = toSnakeCase(settingsPayload);
   
   // Remove id from the update payload (it's in the WHERE clause)
   delete snakeSettings.id;
 
-  const { data, error } = await supabase
-    .from('site_settings')
-    .update(snakeSettings)
-    .eq('id', id)
-    .select()
-    .single();
+  const { data, error } = id
+    ? await supabase
+        .from('site_settings')
+        .update(snakeSettings)
+        .eq('id', id)
+        .select()
+        .single()
+    : await supabase
+        .from('site_settings')
+        .insert(snakeSettings)
+        .select()
+        .single();
 
   if (error) {
     console.error('[Supabase] Error updating site settings:', error);
     throw new Error(error.message);
   }
 
-  const camelData = toCamelCase(data);
-  return { ...camelData, _id: camelData.id };
+  const camelData = toCamelCase(data) as SiteSettings;
+  return { ...mergeSiteSettings(DEFAULT_SITE_SETTINGS, camelData), _id: camelData.id };
 }
 
 // ==================== PAGES ====================
@@ -464,6 +544,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     supabase.from('form_entries').select('status', { count: 'exact', head: false }),
   ]);
 
+  const errors = [pagesData.error, postsData.error, usersData.error, formEntriesData.error].filter(Boolean);
+  if (errors.length > 0) {
+    const message = errors.map((err) => err?.message).join(' | ');
+    throw new Error(message || 'Failed to load dashboard stats');
+  }
+
   // Calculate page stats
   const totalPages = pagesData.data?.length || 0;
   const publishedPages = pagesData.data?.filter(p => p.is_published).length || 0;
@@ -505,6 +591,64 @@ export interface User {
   lastName?: string;
   createdAt?: string;
   updatedAt?: string;
+  lastLoginAt?: string;
+}
+
+export async function createUser(input: {
+  email: string;
+  password: string;
+  role?: 'admin' | 'user';
+  firstName?: string;
+  lastName?: string;
+}): Promise<User> {
+  const { email, password, role = 'user', firstName, lastName } = input;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const adminSession = sessionData.session;
+
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (signUpError) {
+    console.error('[Supabase] Error creating auth user:', signUpError);
+    throw new Error(signUpError.message);
+  }
+
+  const newUserId = signUpData.user?.id;
+  if (!newUserId) {
+    throw new Error('Failed to create auth user');
+  }
+
+  if (adminSession) {
+    const { error: restoreError } = await supabase.auth.setSession({
+      access_token: adminSession.access_token,
+      refresh_token: adminSession.refresh_token,
+    });
+    if (restoreError) {
+      console.error('[Supabase] Error restoring admin session:', restoreError);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      id: newUserId,
+      email: email.toLowerCase(),
+      role,
+      first_name: firstName || null,
+      last_name: lastName || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[Supabase] Error creating user record:', error);
+    throw new Error(error.message);
+  }
+
+  const camelUser = toCamelCase(data);
+  return { ...camelUser, _id: camelUser.id };
 }
 
 export async function getUsers(): Promise<User[]> {

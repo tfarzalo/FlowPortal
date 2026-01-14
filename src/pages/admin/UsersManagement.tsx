@@ -44,7 +44,8 @@ export default function UsersManagement() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    name: "",
+    firstName: "",
+    lastName: "",
     role: "user",
   });
 
@@ -88,20 +89,20 @@ export default function UsersManagement() {
   const handleUpdate = async () => {
     if (!editingUser) return;
 
-    const updates: any = {
+    const updates = {
       email: formData.email,
-      name: formData.name,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
       role: formData.role,
     };
 
-    // Only include password if it was changed
-    if (formData.password) {
-      updates.password = formData.password;
-    }
-
     try {
-      console.log('[UsersManagement] Updating user:', editingUser._id);
-      await updateUser(editingUser._id, updates);
+      const userId = editingUser._id || editingUser.id;
+      if (!userId) {
+        throw new Error("User ID is missing");
+      }
+      console.log('[UsersManagement] Updating user:', userId);
+      await updateUser(userId, updates);
       toast.success("User updated successfully");
       setDialogOpen(false);
       setEditingUser(null);
@@ -139,7 +140,8 @@ export default function UsersManagement() {
     setFormData({
       email: user.email,
       password: "",
-      name: user.name || "",
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
       role: user.role,
     });
     setDialogOpen(true);
@@ -149,7 +151,8 @@ export default function UsersManagement() {
     setFormData({
       email: "",
       password: "",
-      name: "",
+      firstName: "",
+      lastName: "",
       role: "user",
     });
   };
@@ -213,31 +216,43 @@ export default function UsersManagement() {
               </div>
 
               <div>
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="firstName">First name</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
+                  id="firstName"
+                  value={formData.firstName}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, firstName: e.target.value })
                   }
-                  placeholder="John Doe"
+                  placeholder="John"
                 />
               </div>
 
               <div>
-                <Label htmlFor="password">
-                  Password {editingUser ? "(leave blank to keep current)" : "*"}
-                </Label>
+                <Label htmlFor="lastName">Last name</Label>
                 <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
+                  id="lastName"
+                  value={formData.lastName}
                   onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
+                    setFormData({ ...formData, lastName: e.target.value })
                   }
-                  placeholder={editingUser ? "Enter new password" : "Password"}
+                  placeholder="Doe"
                 />
               </div>
+
+              {!editingUser ? (
+                <div>
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    placeholder="Password"
+                  />
+                </div>
+              ) : null}
 
               <div>
                 <Label htmlFor="role">Role</Label>
@@ -304,7 +319,7 @@ export default function UsersManagement() {
                 users.map((user) => (
                   <TableRow key={user._id}>
                     <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>{user.name || "-"}</TableCell>
+                    <TableCell>{[user.firstName, user.lastName].filter(Boolean).join(" ") || "-"}</TableCell>
                     <TableCell>
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
