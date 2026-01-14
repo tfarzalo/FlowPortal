@@ -25,15 +25,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadUserData(session.user);
-      } else {
-        setLoading(false);
-      }
+  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('Timed out while loading auth session'));
+      }, timeoutMs);
+      promise
+        .then((value) => {
+          clearTimeout(timer);
+          resolve(value);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          reject(error);
+        });
     });
+  };
+
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 8000);
+
+    // Check active session
+    withTimeout(supabase.auth.getSession(), 8000)
+      .then(({ data: { session } }) => {
+        if (session?.user) {
+          loadUserData(session.user);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error('[Auth] Session load timed out:', error);
+        setLoading(false);
+      });
 
     // Listen for auth changes
     const {
@@ -48,7 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
