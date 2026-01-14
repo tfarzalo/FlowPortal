@@ -12,7 +12,7 @@ interface User {
 type AuthContextType = {
   isAuthenticated: boolean;
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -51,44 +51,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserData = async (supabaseUser: SupabaseUser) => {
+  const loadUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
     try {
       // Query the users table to get role and other info
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('email', supabaseUser.email)
-        .single();
+        .eq('id', supabaseUser.id)
+        .maybeSingle();
 
       if (error) {
         console.error('[Auth] Error loading user data:', error);
-        // If user doesn't exist in users table, create with default role
-        const newUser: User = {
-          id: supabaseUser.id,
-          email: supabaseUser.email!,
-          role: 'user',
-          _id: supabaseUser.id,
-        };
-        setUser(newUser);
-        setIsAuthenticated(true);
-      } else {
-        const userData: User = {
-          id: data.id,
-          email: data.email,
-          role: data.role || 'user',
-          _id: data.id,
-        };
-        setUser(userData);
-        setIsAuthenticated(true);
       }
+
+      const fallbackUser: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        role: 'user',
+        _id: supabaseUser.id,
+      };
+
+      const userData: User = data
+        ? {
+            id: data.id,
+            email: data.email,
+            role: data.role || 'user',
+            _id: data.id,
+          }
+        : fallbackUser;
+
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData;
     } catch (err) {
       console.error('[Auth] Error in loadUserData:', err);
+      const fallbackUser: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        role: 'user',
+        _id: supabaseUser.id,
+      };
+      setUser(fallbackUser);
+      setIsAuthenticated(true);
+      return fallbackUser;
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     try {
       setLoading(true);
       console.log('[Auth] Attempting login for:', email);
@@ -105,8 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.user) {
         console.log('[Auth] Login successful');
-        await loadUserData(data.user);
+        return await loadUserData(data.user);
       }
+      throw new Error('Login succeeded but no user returned');
     } catch (error) {
       setLoading(false);
       console.error('[Auth] Login failed:', error);

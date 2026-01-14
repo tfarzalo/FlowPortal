@@ -25,26 +25,22 @@ type LoginForm = {
 export default function Login() {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
-  const { login, user } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
   const { register, handleSubmit } = useForm<LoginForm>()
 
   const onSubmit = async (data: LoginForm) => {
     try {
       setLoading(true)
-      await login(data.email, data.password);
+      const loggedInUser = await login(data.email, data.password);
 
       toast({
         title: "Success",
         description: "Logged in successfully",
       })
 
-      // Get the updated user from localStorage (since state update might be async)
-      const userData = localStorage.getItem("userData");
-      const currentUser = userData ? JSON.parse(userData) : user;
-
       // Redirect admin users (any role except 'user') to admin dashboard
-      if (currentUser?.role && currentUser.role !== 'user') {
+      if (loggedInUser?.role && loggedInUser.role !== 'user') {
         navigate("/admin")
       } else {
         navigate("/")
