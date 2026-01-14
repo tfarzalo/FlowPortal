@@ -8,12 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Save, Send, Plus, Trash2 } from 'lucide-react';
+import { Save, Plus, Trash2 } from 'lucide-react';
 import {
   getFormConfigurationByType,
-  saveFormConfiguration,
-  testEmailConfiguration,
-  initializeFormConfigurations,
+  updateFormConfiguration,
+  createFormConfiguration,
   type FormConfiguration,
   type EmailConfiguration,
 } from '@/api/forms';
@@ -22,7 +21,6 @@ export default function FormConfigurationManagement() {
   const [config, setConfig] = useState<FormConfiguration | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testingEmail, setTestingEmail] = useState(false);
 
   useEffect(() => {
     fetchConfiguration();
@@ -32,20 +30,10 @@ export default function FormConfigurationManagement() {
     try {
       setLoading(true);
       const response = await getFormConfigurationByType('booking');
-      setConfig(response.configuration);
+      setConfig(response);
     } catch (error: any) {
       console.error('Error fetching configuration:', error);
-      // If config doesn't exist, try initializing default
-      try {
-        const initResponse = await initializeFormConfigurations();
-        if (initResponse.configurations && initResponse.configurations.length > 0) {
-          setConfig(initResponse.configurations[0]);
-          toast.success('Default configuration initialized');
-        }
-      } catch (initError: any) {
-        console.error('Error initializing configuration:', initError);
-        toast.error('Failed to load configuration');
-      }
+      toast.error('Failed to load configuration. You may need to create one first.');
     } finally {
       setLoading(false);
     }
@@ -56,7 +44,13 @@ export default function FormConfigurationManagement() {
 
     try {
       setSaving(true);
-      await saveFormConfiguration(config);
+      if (config._id || config.id) {
+        // Update existing
+        await updateFormConfiguration(config._id || config.id!, config);
+      } else {
+        // Create new
+        await createFormConfiguration(config);
+      }
       toast.success('Configuration saved successfully');
       fetchConfiguration();
     } catch (error: any) {
@@ -67,29 +61,8 @@ export default function FormConfigurationManagement() {
     }
   };
 
-  const handleTestEmail = async () => {
-    if (!config?.emailConfiguration) return;
-
-    try {
-      setTestingEmail(true);
-      const result = await testEmailConfiguration(config.emailConfiguration);
-
-      if (result.success) {
-        toast.success('Test email sent successfully!');
-        if (result.testUrl) {
-          console.log('Email preview URL:', result.testUrl);
-          toast.info('Check console for email preview URL');
-        }
-      } else {
-        toast.error(`Failed to send test email: ${result.error}`);
-      }
-    } catch (error: any) {
-      console.error('Error testing email:', error);
-      toast.error('Failed to send test email');
-    } finally {
-      setTestingEmail(false);
-    }
-  };
+  // Email testing is not supported in the new architecture
+  // Can be implemented via Supabase Edge Functions if needed
 
   const updateEmailConfig = (field: keyof EmailConfiguration, value: any) => {
     if (!config) return;
@@ -128,7 +101,7 @@ export default function FormConfigurationManagement() {
 
   const removeEmailRecipient = (index: number) => {
     if (!config) return;
-    const newRecipients = config.emailConfiguration.recipients.filter((_, i) => i !== index);
+    const newRecipients = config.emailConfiguration.recipients.filter((_: string, i: number) => i !== index);
     setConfig({
       ...config,
       emailConfiguration: {
@@ -158,7 +131,7 @@ export default function FormConfigurationManagement() {
 
   const removeServiceOption = (index: number) => {
     if (!config) return;
-    const newOptions = (config.serviceOptions || []).filter((_, i) => i !== index);
+    const newOptions = (config.serviceOptions || []).filter((_: string, i: number) => i !== index);
     setConfig({
       ...config,
       serviceOptions: newOptions,
@@ -185,7 +158,7 @@ export default function FormConfigurationManagement() {
 
   const removeTimeSlot = (index: number) => {
     if (!config) return;
-    const newTimes = (config.availableTimes || []).filter((_, i) => i !== index);
+    const newTimes = (config.availableTimes || []).filter((_: string, i: number) => i !== index);
     setConfig({
       ...config,
       availableTimes: newTimes,
@@ -210,10 +183,6 @@ export default function FormConfigurationManagement() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button onClick={handleTestEmail} disabled={testingEmail} variant="outline">
-            <Send className="h-4 w-4 mr-2" />
-            {testingEmail ? 'Sending...' : 'Test Email'}
-          </Button>
           <Button onClick={handleSaveConfiguration} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
             {saving ? 'Saving...' : 'Save Changes'}
@@ -270,7 +239,7 @@ export default function FormConfigurationManagement() {
               <CardDescription>Manage available service types for the booking form</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {(config.serviceOptions || []).map((option, index) => (
+              {(config.serviceOptions || []).map((option: string, index: number) => (
                 <div key={index} className="flex space-x-2">
                   <Input
                     value={option}
@@ -301,7 +270,7 @@ export default function FormConfigurationManagement() {
               <CardDescription>Configure time slots for service bookings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {(config.availableTimes || []).map((time, index) => (
+              {(config.availableTimes || []).map((time: string, index: number) => (
                 <div key={index} className="flex space-x-2">
                   <Input
                     value={time}
@@ -342,7 +311,7 @@ export default function FormConfigurationManagement() {
 
               <div className="space-y-2">
                 <Label>Recipients</Label>
-                {config.emailConfiguration.recipients.map((recipient, index) => (
+                {config.emailConfiguration.recipients.map((recipient: string, index: number) => (
                   <div key={index} className="flex space-x-2">
                     <Input
                       type="email"

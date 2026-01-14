@@ -1,22 +1,18 @@
 import { useEffect, useState } from "react";
-import { getDashboardStats, DashboardStats, downloadApplicationZip, getExportInfo, ExportInfo } from "../../api/admin";
+import { getDashboardStats, DashboardStats } from "../../api/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { FileText, NewspaperIcon, CheckCircle, Clock, Download, Package } from "lucide-react";
+import { FileText, NewspaperIcon, CheckCircle, Clock, Users, FileStack } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [exportInfo, setExportInfo] = useState<ExportInfo | null>(null);
-  const [downloading, setDownloading] = useState(false);
 
   console.log('[AdminDashboard] Component rendering');
 
   useEffect(() => {
     console.log('[AdminDashboard] useEffect running, loading stats');
     loadStats();
-    loadExportInfo();
   }, []);
 
   const loadStats = async () => {
@@ -29,46 +25,6 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadExportInfo = async () => {
-    try {
-      const info = await getExportInfo();
-      setExportInfo(info);
-    } catch (error: any) {
-      console.error('Failed to load export info:', error.message);
-    }
-  };
-
-  const handleDownload = async () => {
-    try {
-      setDownloading(true);
-      toast.info('Preparing download... This may take a few moments.');
-
-      console.log('[AdminDashboard] Starting download process...');
-      await downloadApplicationZip();
-
-      console.log('[AdminDashboard] Download completed');
-      toast.success('Application downloaded successfully!');
-    } catch (error: any) {
-      console.error('[AdminDashboard] Download error:', error);
-      toast.error(`Failed to download application: ${error.message}`);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handleDirectDownload = () => {
-    // Direct download link as alternative method for iframe/preview environments
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      toast.error('Authentication required');
-      return;
-    }
-
-    const downloadUrl = `/api/admin/export/download?token=${encodeURIComponent(token)}`;
-    window.open(downloadUrl, '_blank');
-    toast.info('Download started in new window');
   };
 
   if (loading) {
@@ -119,6 +75,20 @@ export default function AdminDashboard() {
       color: "text-orange-600",
       bgColor: "bg-orange-50 dark:bg-orange-950",
     },
+    {
+      title: "Total Users",
+      value: stats.totalUsers,
+      icon: Users,
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-50 dark:bg-indigo-950",
+    },
+    {
+      title: "Form Entries",
+      value: stats.totalFormEntries,
+      icon: FileStack,
+      color: "text-pink-600",
+      bgColor: "bg-pink-50 dark:bg-pink-950",
+    },
   ];
 
   return (
@@ -126,11 +96,11 @@ export default function AdminDashboard() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Welcome to Admin Dashboard</h1>
         <p className="text-muted-foreground">
-          Manage your site content, settings, and more from here.
+          Manage your site content, settings, and more from here. Now powered by direct Supabase integration!
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -184,6 +154,15 @@ export default function AdminDashboard() {
                 Upload and organize your media files
               </p>
             </a>
+            <a
+              href="/admin/settings"
+              className="block p-4 rounded-lg border border-border hover:bg-muted transition-colors"
+            >
+              <h3 className="font-semibold mb-1">Site Settings</h3>
+              <p className="text-sm text-muted-foreground">
+                Configure your site name, colors, and more
+              </p>
+            </a>
           </CardContent>
         </Card>
 
@@ -196,7 +175,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Draft Pages</p>
                 <p className="text-2xl font-bold">
-                  {stats.totalPages - stats.publishedPages}
+                  {stats.draftPages}
                 </p>
               </div>
               <FileText className="w-8 h-8 text-muted-foreground" />
@@ -205,10 +184,19 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">Draft Posts</p>
                 <p className="text-2xl font-bold">
-                  {stats.totalPosts - stats.publishedPosts}
+                  {stats.draftPosts}
                 </p>
               </div>
               <NewspaperIcon className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
+              <div>
+                <p className="text-sm text-muted-foreground">Unread Forms</p>
+                <p className="text-2xl font-bold">
+                  {stats.unreadFormEntries}
+                </p>
+              </div>
+              <FileStack className="w-8 h-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -216,70 +204,20 @@ export default function AdminDashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="w-5 h-5" />
-            Export Application
-          </CardTitle>
+          <CardTitle>Architecture Information</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <h3 className="font-semibold mb-2">Download Source Code</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Download a complete copy of the FlowPortal application source code as a ZIP file.
-                  This includes all code files, configurations, and documentation (excluding node_modules,
-                  uploads, and build artifacts).
-                </p>
-                {exportInfo && (
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span>{exportInfo.fileCount} files</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4" />
-                      <span>~{exportInfo.formattedSize}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <Button
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="flex items-center gap-2"
-                >
-                  {downloading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Preparing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      <span>Download ZIP</span>
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={handleDirectDownload}
-                  variant="outline"
-                  disabled={downloading}
-                  className="flex items-center gap-2 text-xs"
-                >
-                  <Download className="w-3 h-3" />
-                  <span>Direct Download</span>
-                </Button>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50 border border-border">
-              <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> The download may take a moment to prepare. If the download doesn't start automatically,
-                try the "Direct Download" button which opens in a new window. The exported ZIP file
-                will contain the complete application structure, ready for deployment or backup purposes.
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              FlowPortal is now running on a <strong>unified single-page architecture</strong> with direct Supabase integration.
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+              <li>✅ Direct Supabase authentication (no backend server needed)</li>
+              <li>✅ Real-time database queries from the frontend</li>
+              <li>✅ Secure file uploads to Supabase Storage</li>
+              <li>✅ Row Level Security (RLS) enforced at database level</li>
+              <li>✅ Deployed as a single frontend application</li>
+            </ul>
           </div>
         </CardContent>
       </Card>

@@ -3,18 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ContactBar } from "@/components/landing/ContactBar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
-
-interface Page {
-  _id: string;
-  title: string;
-  slug: string;
-  content: string;
-  metaDescription?: string;
-  metaKeywords?: string;
-  isPublished: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { getPageBySlug, type Page } from "@/api/admin";
 
 export function PageView() {
   const { slug } = useParams<{ slug: string }>();
@@ -40,24 +29,17 @@ export function PageView() {
         setError(null);
         console.log(`Fetching page with slug: ${slug}`);
 
-        const response = await fetch(`/api/pages/${slug}`);
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError('Page not found');
-          } else {
-            setError('Failed to load page');
-          }
-          setLoading(false);
-          return;
-        }
-
-        const data = await response.json();
-        setPage(data.page);
-        console.log('Page loaded successfully:', data.page.title);
+        const pageData = await getPageBySlug(slug);
+        setPage(pageData);
+        console.log('Page loaded successfully:', pageData.title);
       } catch (err: unknown) {
         console.error('Error fetching page:', err);
-        setError('Failed to load page');
+        const error = err as Error;
+        if (error.message.includes('not found')) {
+          setError('Page not found');
+        } else {
+          setError('Failed to load page');
+        }
       } finally {
         setLoading(false);
       }
