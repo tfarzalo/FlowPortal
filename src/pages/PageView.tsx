@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ContactBar } from "@/components/landing/ContactBar";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
-import { getPageBySlug, type Page } from "@/api/admin";
+import { getPublishedPageBySlug, type Page } from "@/api/admin";
 
 export function PageView() {
   const { slug } = useParams<{ slug: string }>();
@@ -29,7 +29,7 @@ export function PageView() {
         setError(null);
         console.log(`Fetching page with slug: ${slug}`);
 
-        const pageData = await getPageBySlug(slug);
+        const pageData = await getPublishedPageBySlug(slug);
         setPage(pageData);
         console.log('Page loaded successfully:', pageData.title);
       } catch (err: unknown) {

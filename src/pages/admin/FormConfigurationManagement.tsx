@@ -22,6 +22,23 @@ export default function FormConfigurationManagement() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const createDefaultConfig = (): FormConfiguration => ({
+    formType: 'booking',
+    formName: 'Booking',
+    fields: [],
+    emailConfiguration: {
+      enabled: false,
+      recipients: [],
+      subject: 'New Form Submission',
+      fromName: 'FlowPortal',
+      fromEmail: 'no-reply@example.com',
+      includeAllFields: true,
+    },
+    serviceOptions: [],
+    availableTimes: [],
+    enabled: true,
+  });
+
   useEffect(() => {
     fetchConfiguration();
   }, []);
@@ -30,10 +47,11 @@ export default function FormConfigurationManagement() {
     try {
       setLoading(true);
       const response = await getFormConfigurationByType('booking');
-      setConfig(response);
+      setConfig(response ?? createDefaultConfig());
     } catch (error: any) {
       console.error('Error fetching configuration:', error);
       toast.error('Failed to load configuration. You may need to create one first.');
+      setConfig(createDefaultConfig());
     } finally {
       setLoading(false);
     }

@@ -8,6 +8,7 @@ import MediaManagement from "./pages/MediaManagement"
 import { AuthProvider } from "./contexts/SupabaseAuthContext"
 import { SiteSettingsProvider } from "./contexts/SiteSettingsContext"
 import { AdminLayout } from "./components/admin/AdminLayout"
+import { ProtectedRoute } from "./components/ProtectedRoute"
 import AdminDashboard from "./pages/admin/AdminDashboard"
 import PagesManagement from "./pages/admin/PagesManagement"
 import PageEditor from "./pages/admin/PageEditor"
@@ -32,7 +33,14 @@ function App() {
               <Route path="/media" element={<MediaManagement />} />
 
               {/* Admin Routes */}
-              <Route path="/admin" element={<AdminLayout />}>
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                }
+              >
                 <Route index element={<AdminDashboard />} />
                 <Route path="pages" element={<PagesManagement />} />
                 <Route path="pages/new" element={<PageEditor />} />

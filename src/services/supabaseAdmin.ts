@@ -322,6 +322,23 @@ export async function getPageBySlug(slug: string): Promise<Page> {
   return { ...camelPage, _id: camelPage.id };
 }
 
+export async function getPublishedPageBySlug(slug: string): Promise<Page> {
+  const { data, error } = await supabase
+    .from('pages')
+    .select('*')
+    .eq('slug', slug)
+    .eq('is_published', true)
+    .single();
+
+  if (error) {
+    console.error('[Supabase] Error fetching published page by slug:', error);
+    throw new Error(error.message);
+  }
+
+  const camelPage = toCamelCase(data);
+  return { ...camelPage, _id: camelPage.id };
+}
+
 export async function createPage(pageData: Partial<Page>): Promise<Page> {
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();

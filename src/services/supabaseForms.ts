@@ -357,12 +357,8 @@ export async function deleteFormConfiguration(id: string): Promise<void> {
 export async function submitForm(formType: string, formData: Record<string, unknown>): Promise<FormEntry> {
   // Get form configuration to validate
   const config = await getFormConfigurationByType(formType);
-  
-  if (!config) {
-    throw new Error(`Form configuration not found for type: ${formType}`);
-  }
 
-  if (!config.enabled) {
+  if (config && !config.enabled) {
     throw new Error('This form is currently disabled');
   }
 
