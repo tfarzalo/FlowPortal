@@ -5,13 +5,13 @@ import { defineConfig } from "vite"
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: path.resolve(__dirname, "../dist"),
+    outDir: "dist",
     emptyOutDir: true,
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@shared": path.resolve(__dirname, "../shared"),
+      "@shared": path.resolve(__dirname, "./shared"),
     },
   },
   server: {

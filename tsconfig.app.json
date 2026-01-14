@@ -27,10 +27,9 @@
         "./src/*"
       ],
       "@shared/*": [
-        "../shared/*"
+        "./shared/*"
       ]
     }
   },
   "include": ["src"]
 }
-
