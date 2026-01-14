@@ -2,10 +2,9 @@ import express, { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
-import mongoose from 'mongoose';
 import { MediaService } from '../services/mediaService';
 import { requireUser } from './middlewares/auth';
-import { IUser } from '../models/User';
+import { IUser } from '../services/userService';
 import { transformKeysToCamel, transformKeysToSnake } from '../utils/dataTransformers';
 
 interface AuthRequest extends Request {
@@ -108,7 +107,7 @@ router.post('/upload', requireUser(), upload.single('file'), async (req: AuthReq
       url: `/uploads/${req.file.filename}`,
       category,
       description,
-      uploadedBy: req.user?._id as mongoose.Types.ObjectId | undefined,
+      uploadedBy: req.user?.id,
     };
 
     const media = await MediaService.createMedia(mediaData);

@@ -12,7 +12,7 @@ export interface IUser {
   refresh_token: string;
 }
 
-interface CreateUserData {
+export interface CreateUserData {
   email: string;
   password: string;
   name?: string;

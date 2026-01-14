@@ -25,7 +25,10 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "models",
+    "scripts",
+    "services/_mongoose_backup"
   ],
   "ts-node": {
     "esm": false

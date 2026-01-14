@@ -75,7 +75,7 @@ router.get("/api/pages/:slug", async (req: Request, res: Response) => {
     }
 
     // Only return published pages to public
-    if (!page.isPublished) {
+    if (!page.is_published) {
       return res.status(404).json({ error: 'Page not found' });
     }
 

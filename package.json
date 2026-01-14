@@ -13,6 +13,7 @@
     "shared-install": "cd shared && npm install && npm run build",
     "shared-build": "cd shared && npm run build",
     "shared-dev": "cd shared && npm run dev",
+    "build": "npm run shared-build && npm --prefix client run build",
     "start": "concurrently -n \"client,server\" \"npm run client\" \"npm run server\"",
     "lint": "concurrently -n \"client,server,shared\" \"cd client && npm run lint\" \"cd server && npm run lint\" \"cd shared && npm run lint\"",
     "debug": "concurrently -n \"client,server\" \"npm run client\" \"cross-env NODE_OPTIONS=--inspect-brk=9229 npm run server\""

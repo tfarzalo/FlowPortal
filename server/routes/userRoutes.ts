@@ -1,12 +1,12 @@
 import express from 'express';
 import { Request, Response } from 'express';
-import UserService from '../services/userService';
+import UserService, { CreateUserData, IUser } from '../services/userService';
 import { requireUser } from './middlewares/auth';
 
 const router = express.Router();
 
 interface AuthRequest extends Request {
-  user?: Record<string, unknown>;
+  user?: IUser;
 }
 
 // Description: Get all users (admin only)
@@ -64,10 +64,7 @@ router.post('/', requireUser(['admin']), async (req: AuthRequest, res: Response)
     }
 
     console.log(`[UserRoutes] Creating new user: ${email}`);
-    const userData: Record<string, string> = { email, password, name };
-    if (role) {
-      userData.role = role;
-    }
+    const userData: CreateUserData = { email, password, name, role };
 
     const user = await UserService.create(userData);
     console.log(`[UserRoutes] User created successfully: ${user.email}`);
@@ -97,7 +94,7 @@ router.put('/:id', requireUser(['admin']), async (req: AuthRequest, res: Respons
         console.log(`[UserRoutes] User not found for update: ${id}`);
         return res.status(404).json({ error: 'User not found' });
       }
-      await UserService.setPassword(user, password);
+      await UserService.setPassword(user.id, password);
       console.log(`[UserRoutes] Password updated for user: ${id}`);
     }
 
@@ -128,7 +125,7 @@ router.delete('/:id', requireUser(['admin']), async (req: AuthRequest, res: Resp
     console.log(`[UserRoutes] Deleting user: ${id}`);
 
     // Prevent deleting yourself
-    if (req.user?._id?.toString() === id) {
+    if (req.user?.id === id) {
       console.log('[UserRoutes] Cannot delete your own account');
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
