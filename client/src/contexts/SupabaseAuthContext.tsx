@@ -13,6 +13,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 };
@@ -113,6 +114,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const register = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      console.log('[Auth] Attempting registration for:', email);
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('[Auth] Registration error:', error);
+        throw new Error(error.message);
+      }
+
+      console.log('[Auth] Registration successful');
+      // Note: User may need to verify email depending on Supabase settings
+    } catch (error) {
+      console.error('[Auth] Registration failed:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       console.log('[Auth] Logging out');
@@ -128,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated,
     user,
     login,
+    register,
     logout,
     loading,
   };

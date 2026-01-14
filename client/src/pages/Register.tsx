@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/useToast"
 import {
   UserPlus
 } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from "@/contexts/SupabaseAuthContext"
 
 type RegisterForm = {
   email: string
@@ -44,7 +44,7 @@ export default function Register() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error?.message,
+        description: error instanceof Error ? error.message : "Registration failed",
       })
     } finally {
       setLoading(false)

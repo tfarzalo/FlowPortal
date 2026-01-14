@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/useToast"
 import {
   LogIn
 } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from "@/contexts/SupabaseAuthContext"
 
 type LoginForm = {
   email: string

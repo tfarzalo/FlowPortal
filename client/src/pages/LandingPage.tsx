@@ -10,7 +10,7 @@ import { BookingForm } from "@/components/landing/BookingForm";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { toast } from "sonner";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
 import ComingSoonPage from "./ComingSoonPage";
 
 export function LandingPage() {

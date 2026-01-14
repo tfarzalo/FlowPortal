@@ -2,7 +2,7 @@ import { LogOut } from "lucide-react"
 import { Button } from "./ui/button"
 import { ThemeToggle } from "./ui/theme-toggle"
 
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from "@/contexts/SupabaseAuthContext"
 import { useNavigate } from "react-router-dom"
 
 export function Header() {
