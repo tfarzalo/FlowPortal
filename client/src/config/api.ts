@@ -5,10 +5,18 @@
 
 /**
  * Get the API base URL dynamically based on the current environment
- * In production/deployed environments, uses the current window location
- * In development, uses localhost:3000
+ * Priority:
+ * 1. VITE_API_URL environment variable (for production deploys)
+ * 2. localhost:5000 for development
+ * 3. Same domain as frontend (if backend and frontend are on same host)
  */
 export const getApiUrl = (): string => {
+  // First, check for environment variable (highest priority)
+  if (import.meta.env.VITE_API_URL) {
+    console.log('[API Config] Using VITE_API_URL:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
+  }
+
   // If running in a browser environment
   if (typeof window !== 'undefined') {
     // In development (localhost:5173 frontend with localhost:3000 backend)
