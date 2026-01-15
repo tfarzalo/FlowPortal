@@ -16,6 +16,7 @@ import {
   LogIn
 } from "lucide-react"
 import { useAuth } from "@/contexts/SupabaseAuthContext"
+import { isSupabaseConfigured } from "@/lib/supabase"
 
 type LoginForm = {
   email: string
@@ -24,6 +25,7 @@ type LoginForm = {
 
 export default function Login() {
   const [loading, setLoading] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
   const { toast } = useToast()
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -32,6 +34,7 @@ export default function Login() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setLoading(true)
+      setLoginError(null)
       const loggedInUser = await login(data.email, data.password);
 
       toast({
@@ -48,6 +51,7 @@ export default function Login() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during login"
       console.error("Login error:", errorMessage)
+      setLoginError(errorMessage)
       toast({
         variant: "destructive",
         title: "Error",
@@ -67,6 +71,19 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {!isSupabaseConfigured ? (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                Supabase credentials are missing. Add `VITE_SUPABASE_URL` and
+                `VITE_SUPABASE_ANON_KEY` to your deployment environment and redeploy.
+              </div>
+            ) : null}
+            {loginError ? (
+              <div className="rounded-md border border-muted bg-muted/50 p-3 text-sm text-muted-foreground">
+                {loginError.includes("Timed out")
+                  ? "Login timed out. This usually means the site cannot reach Supabase. Verify your Supabase URL/anon key and that the project is reachable."
+                  : `Login failed: ${loginError}`}
+              </div>
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
