@@ -16,7 +16,7 @@ import {
   LogIn
 } from "lucide-react"
 import { useAuth } from "@/contexts/SupabaseAuthContext"
-import { isSupabaseConfigured, resolvedSupabaseUrl } from "@/lib/supabase"
+import { isSupabaseConfigured, resolvedSupabaseUrl, hasSupabaseAnonKey } from "@/lib/supabase"
 
 type LoginForm = {
   email: string
@@ -78,7 +78,7 @@ export default function Login() {
               </div>
             ) : null}
             <div className="rounded-md border border-muted bg-muted/50 p-3 text-xs text-muted-foreground">
-              Diagnostics: Supabase URL = {resolvedSupabaseUrl || "missing"}
+              Diagnostics: Supabase URL = {resolvedSupabaseUrl || "missing"} | anon key loaded = {hasSupabaseAnonKey ? "yes" : "no"}
             </div>
             {loginError ? (
               <div className="rounded-md border border-muted bg-muted/50 p-3 text-sm text-muted-foreground">
