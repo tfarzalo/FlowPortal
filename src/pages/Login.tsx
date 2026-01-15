@@ -16,7 +16,7 @@ import {
   LogIn
 } from "lucide-react"
 import { useAuth } from "@/contexts/SupabaseAuthContext"
-import { isSupabaseConfigured } from "@/lib/supabase"
+import { isSupabaseConfigured, resolvedSupabaseUrl } from "@/lib/supabase"
 
 type LoginForm = {
   email: string
@@ -77,6 +77,9 @@ export default function Login() {
                 `VITE_SUPABASE_ANON_KEY` to your deployment environment and redeploy.
               </div>
             ) : null}
+            <div className="rounded-md border border-muted bg-muted/50 p-3 text-xs text-muted-foreground">
+              Diagnostics: Supabase URL = {resolvedSupabaseUrl || "missing"}
+            </div>
             {loginError ? (
               <div className="rounded-md border border-muted bg-muted/50 p-3 text-sm text-muted-foreground">
                 {loginError.includes("Timed out")
