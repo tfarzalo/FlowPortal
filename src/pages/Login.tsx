@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,6 +29,7 @@ export default function Login() {
   const { toast } = useToast()
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { register, handleSubmit } = useForm<LoginForm>()
 
   const onSubmit = async (data: LoginForm) => {
@@ -42,11 +43,17 @@ export default function Login() {
         description: "Logged in successfully",
       })
 
+      const locationState = location.state as { from?: { pathname?: string } } | null
+      const params = new URLSearchParams(location.search)
+      const redirectParam = params.get("redirect")
+      const redirectFromState = locationState?.from?.pathname
+      const redirectTo = redirectFromState || redirectParam
+
       // Redirect admin users (any role except 'user') to admin dashboard
       if (loggedInUser?.role && loggedInUser.role !== 'user') {
-        navigate("/admin")
+        navigate(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/admin")
       } else {
-        navigate("/")
+        navigate(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/")
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during login"

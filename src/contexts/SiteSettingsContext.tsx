@@ -86,7 +86,8 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const fetchSettings = async () => {
     try {
-      setLoading(true);
+      const shouldBlock = settings === null;
+      setLoading(shouldBlock);
       setError(null);
       if (!isSupabaseConfigured) {
         setError('Supabase credentials are missing.');

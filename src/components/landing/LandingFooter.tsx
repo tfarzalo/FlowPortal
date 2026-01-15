@@ -230,7 +230,7 @@ export function LandingFooter() {
             }`}>
               Privacy Policy
             </a>
-            <a href="/admin" className={`text-sm transition-colors ${
+            <a href="/login?redirect=/admin" className={`text-sm transition-colors ${
               isDark
                 ? 'text-gray-500 hover:text-cyan-400'
                 : 'text-gray-500 hover:text-blue-600'
