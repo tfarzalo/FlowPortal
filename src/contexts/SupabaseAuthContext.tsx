@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import { supabase, isSupabaseConfigured, SUPABASE_TIMEOUT_MS } from "../lib/supabase";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface User {
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
       setLoading(false);
-    }, 8000);
+    }, SUPABASE_TIMEOUT_MS);
 
     if (!isSupabaseConfigured) {
       console.error('[Auth] Supabase credentials are missing.');
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Check active session
-    withTimeout(supabase.auth.getSession(), 8000)
+    withTimeout(supabase.auth.getSession(), SUPABASE_TIMEOUT_MS)
       .then(({ data: { session } }) => {
         if (session?.user) {
           loadUserData(session.user);
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
         }),
-        8000
+        SUPABASE_TIMEOUT_MS
       );
 
       if (error) {
