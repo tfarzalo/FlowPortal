@@ -1,5 +1,3 @@
-import { useRef, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { ContactBar } from "@/components/landing/ContactBar";
 import { ServicesSection } from "@/components/landing/ServicesSection";
@@ -10,24 +8,10 @@ import { BookingForm } from "@/components/landing/BookingForm";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { toast } from "sonner";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
-import { useAuth } from "@/contexts/SupabaseAuthContext";
 import ComingSoonPage from "./ComingSoonPage";
 
 export function LandingPage() {
-  const bookingFormRef = useRef<HTMLDivElement>(null);
   const { settings, loading } = useSiteSettings();
-  const { user, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
-  // Check if this is a preview request from admin
-  const isPreview = searchParams.get('preview') === 'true';
-
-  // Note: Admin users are no longer auto-redirected to /admin
-  // They can view the landing page and access admin panel via the admin link
-  useEffect(() => {
-    console.log('[LandingPage] User viewing landing page:', { isAuthenticated, userRole: user?.role, isPreview });
-  }, [isAuthenticated, user, isPreview]);
 
   // Show loading state while checking
   if (loading && !settings) {
