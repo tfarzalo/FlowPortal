@@ -199,7 +199,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase
     .from('site_settings')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -323,16 +323,30 @@ export async function getPageBySlug(slug: string): Promise<Page> {
 }
 
 export async function getPublishedPageBySlug(slug: string): Promise<Page> {
+  const startTime = performance.now();
+  console.log(`[Supabase] Fetching published page by slug: ${slug}`);
+  
+  // Select only fields that exist in the pages table
   const { data, error } = await supabase
     .from('pages')
-    .select('*')
+    .select('id, slug, title, content, meta_description, meta_keywords, is_published, created_by, created_at, updated_at')
     .eq('slug', slug)
     .eq('is_published', true)
     .single();
 
+  const queryTime = performance.now() - startTime;
+  console.log(`[Supabase] Query completed in ${queryTime.toFixed(2)}ms`);
+
   if (error) {
     console.error('[Supabase] Error fetching published page by slug:', error);
+    if (error.code === 'PGRST116') {
+      throw new Error('Page not found');
+    }
     throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error('Page not found');
   }
 
   const camelPage = toCamelCase(data);
@@ -347,11 +361,31 @@ export async function createPage(pageData: Partial<Page>): Promise<Page> {
     throw new Error('User not authenticated');
   }
 
-  // Transform to snake_case and add created_by
-  const snakePage = toSnakeCase({
+  // Check if user exists in auth.users by checking their profile
+  let createdBy: string | null = null;
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+    
+    if (profile) {
+      createdBy = user.id;
+    } else {
+      console.warn('[createPage] User profile not found, creating page without created_by');
+    }
+  } catch (err) {
+    console.warn('[createPage] Error checking user profile:', err);
+  }
+
+  // Transform to snake_case and add created_by only if valid
+  const pageToCreate = {
     ...pageData,
-    createdBy: user.id,
-  });
+    ...(createdBy && { createdBy })
+  };
+  
+  const snakePage = toSnakeCase(pageToCreate);
 
   const { data, error } = await supabase
     .from('pages')

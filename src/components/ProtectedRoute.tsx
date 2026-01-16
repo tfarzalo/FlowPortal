@@ -11,6 +11,8 @@ export function ProtectedRoute({
   const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
 
+  console.log('[ProtectedRoute] State:', { isAuthenticated, loading, userRole: user?.role, requireAdmin });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -20,11 +22,24 @@ export function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
+    console.log('[ProtectedRoute] Not authenticated, redirecting to /login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && (!user?.role || user.role === "user")) {
-    return <Navigate to="/" replace />;
+  if (requireAdmin) {
+    if (!user?.role) {
+      console.log('[ProtectedRoute] Admin required but no role loaded, showing spinner');
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+    if (user.role !== "admin") {
+      console.log('[ProtectedRoute] User is not admin, redirecting to /');
+      return <Navigate to="/" replace />;
+    }
+    console.log('[ProtectedRoute] User is admin, allowing access');
   }
 
   return <>{children}</>;

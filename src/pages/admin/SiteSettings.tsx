@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../../components/ui/dialog";
 import { Switch } from "../../components/ui/switch";
 import { toast } from "sonner";
-import { Save, Image as ImageIcon, Plus, Trash2, X } from "lucide-react";
+import { Save, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { useSiteSettings } from "../../contexts/SiteSettingsContext";
 
 export default function SiteSettings() {
@@ -20,7 +20,9 @@ export default function SiteSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoMedia, setLogoMedia] = useState<Media[]>([]);
+  const [allMedia, setAllMedia] = useState<Media[]>([]);
   const [loadingLogos, setLoadingLogos] = useState(false);
+  const [loadingAllMedia, setLoadingAllMedia] = useState(false);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [faviconDialogOpen, setFaviconDialogOpen] = useState(false);
   const [landingIconDialogOpen, setLandingIconDialogOpen] = useState(false);
@@ -31,6 +33,7 @@ export default function SiteSettings() {
   useEffect(() => {
     loadSettings();
     loadLogoMedia();
+    loadAllMedia();
   }, []);
 
   const loadSettings = async () => {
@@ -123,6 +126,23 @@ export default function SiteSettings() {
     }
   };
 
+  const loadAllMedia = async () => {
+    try {
+      setLoadingAllMedia(true);
+      console.log('[SiteSettings] Loading all media for hero background...');
+      const media = await getMedia(); // Get all media, no filter
+      console.log('[SiteSettings] Loaded all media successfully:', {
+        count: media.length
+      });
+      setAllMedia(media);
+    } catch (error: any) {
+      console.error('[SiteSettings] Failed to load all media:', error);
+      toast.error(`Failed to load media: ${error.message}`);
+    } finally {
+      setLoadingAllMedia(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!settings) return;
 
@@ -130,14 +150,21 @@ export default function SiteSettings() {
       setSaving(true);
       console.log('[SiteSettings] Saving settings...', {
         siteName: settings.siteName,
+        defaultTheme: settings.defaultTheme,
         hasLogo: !!settings.logoUrl,
         hasFavicon: !!settings.faviconUrl
       });
       const updatedSettings = await updateSiteSettings(settings);
       setSettings(updatedSettings);
+      console.log('[SiteSettings] Refetching settings from context...');
       await refetchSettings();
-      console.log('[SiteSettings] Settings saved successfully');
+      console.log('[SiteSettings] Settings saved and refetched successfully');
       toast.success("Settings saved successfully");
+      
+      // Give a moment for the refetch to complete and theme to apply
+      setTimeout(() => {
+        console.log('[SiteSettings] Theme should now be applied');
+      }, 100);
     } catch (error: any) {
       console.error('[SiteSettings] Failed to save settings:', error);
       toast.error(`Failed to save settings: ${error.message}`);
@@ -443,7 +470,7 @@ export default function SiteSettings() {
                         alt="Site Logo"
                         className="max-w-full max-h-full object-contain"
                         onError={(e) => {
-                          console.error('[SiteSettings] Logo image failed to load:', getMediaUrl(settings.logoUrl));
+                          console.error('[SiteSettings] Logo image failed to load:', settings.logoUrl ? getMediaUrl(settings.logoUrl) : 'undefined');
                           e.currentTarget.style.display = 'none';
                         }}
                       />
@@ -515,7 +542,7 @@ export default function SiteSettings() {
                         alt="Favicon"
                         className="max-w-full max-h-full object-contain"
                         onError={(e) => {
-                          console.error('[SiteSettings] Favicon image failed to load:', getMediaUrl(settings.faviconUrl));
+                          console.error('[SiteSettings] Favicon image failed to load:', settings.faviconUrl ? getMediaUrl(settings.faviconUrl) : 'undefined');
                           e.currentTarget.style.display = 'none';
                         }}
                       />
@@ -951,33 +978,38 @@ export default function SiteSettings() {
                     <DialogHeader>
                       <DialogTitle>Select Hero Background Image</DialogTitle>
                       <DialogDescription>
-                        Choose a background image for the hero section
+                        Choose a background image for the hero section from your media library
                       </DialogDescription>
                     </DialogHeader>
-                    {loadingLogos ? (
+                    {loadingAllMedia ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       </div>
-                    ) : logoMedia.length === 0 ? (
+                    ) : allMedia.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
-                        No images found in media library.
+                        No images found in media library. Upload images in the Media Management section.
                       </p>
                     ) : (
-                      <div className="grid grid-cols-3 gap-4 mt-4">
-                        {logoMedia.map((media) => (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                        {allMedia.filter(m => m.mimeType?.startsWith('image/')).map((media) => (
                           <div
                             key={media._id}
                             className="border rounded p-2 cursor-pointer hover:border-primary hover:bg-accent transition-colors"
                             onClick={() => selectHeroBackground(media)}
                           >
-                            <div className="aspect-video bg-gray-50 rounded flex items-center justify-center mb-2">
+                            <div className="aspect-video bg-gray-50 dark:bg-gray-900 rounded flex items-center justify-center mb-2 overflow-hidden">
                               <img
                                 src={getMediaUrl(media.url)}
                                 alt={media.originalName}
-                                className="max-w-full max-h-full object-cover rounded"
+                                className="w-full h-full object-cover rounded"
                               />
                             </div>
                             <p className="text-xs truncate text-center">{media.originalName}</p>
+                            {media.description && (
+                              <p className="text-xs text-muted-foreground truncate text-center mt-1">
+                                {media.description}
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>

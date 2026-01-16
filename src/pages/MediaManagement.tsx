@@ -94,6 +94,7 @@ export default function MediaManagement() {
   };
 
   const startEdit = (media: Media) => {
+    if (!media._id) return;
     setEditingMedia(media._id);
     setEditDescription(media.description || '');
     setEditCategory(media.category);
@@ -275,11 +276,26 @@ export default function MediaManagement() {
                       <div className="space-y-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
-                            <span className="text-3xl">{getFileIcon(media.mimeType)}</span>
+                            {/* Show thumbnail for images, icon for other files */}
+                            {media.mimeType?.startsWith('image/') ? (
+                              <img 
+                                src={getMediaUrl(media.url)} 
+                                alt={media.originalName}
+                                className="w-16 h-16 object-cover rounded border border-border"
+                                onError={(e) => {
+                                  // Fallback to icon if image fails to load
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <span className={`text-3xl ${media.mimeType?.startsWith('image/') ? 'hidden' : ''}`}>
+                              {getFileIcon(media.mimeType || 'application/octet-stream')}
+                            </span>
                             <div>
                               <p className="font-medium">{media.originalName}</p>
                               <p className="text-sm text-muted-foreground">
-                                {formatFileSize(media.size)} • {media.mimeType}
+                                {formatFileSize(media.size)} • {media.mimeType || 'unknown'}
                               </p>
                             </div>
                           </div>
@@ -310,7 +326,7 @@ export default function MediaManagement() {
                         </div>
 
                         <div className="flex gap-2">
-                          <Button onClick={() => saveEdit(media._id)} size="sm">
+                          <Button onClick={() => media._id && saveEdit(media._id)} size="sm" disabled={!media._id}>
                             <Check className="h-4 w-4 mr-2" />
                             Save
                           </Button>
@@ -323,7 +339,22 @@ export default function MediaManagement() {
                     ) : (
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3 flex-1">
-                          <span className="text-3xl">{getFileIcon(media.mimeType)}</span>
+                          {/* Show thumbnail for images, icon for other files */}
+                          {media.mimeType?.startsWith('image/') ? (
+                            <img 
+                              src={getMediaUrl(media.url)} 
+                              alt={media.originalName}
+                              className="w-16 h-16 object-cover rounded border border-border"
+                              onError={(e) => {
+                                // Fallback to icon if image fails to load
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <span className={`text-3xl ${media.mimeType?.startsWith('image/') ? 'hidden' : ''}`}>
+                            {getFileIcon(media.mimeType || 'application/octet-stream')}
+                          </span>
                           <div className="flex-1">
                             <p className="font-medium">{media.originalName}</p>
                             <p className="text-sm text-muted-foreground">
@@ -333,8 +364,8 @@ export default function MediaManagement() {
                               <p className="text-sm mt-1">{media.description}</p>
                             )}
                             <p className="text-xs text-muted-foreground mt-1">
-                              Uploaded {new Date(media.createdAt).toLocaleDateString()}
-                              {media.uploadedBy && ` by ${media.uploadedBy.email}`}
+                              Uploaded {media.createdAt ? new Date(media.createdAt).toLocaleDateString() : 'Unknown date'}
+                              {media.uploadedBy && typeof media.uploadedBy === 'string' ? ` by ${media.uploadedBy}` : ''}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1 font-mono">
                               URL: {media.url}
@@ -379,7 +410,8 @@ export default function MediaManagement() {
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => handleDelete(media._id)}
+                                onClick={() => media._id && handleDelete(media._id)}
+                                disabled={!media._id}
                                 title="Delete"
                               >
                                 <Trash2 className="h-4 w-4" />

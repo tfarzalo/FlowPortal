@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase, isSupabaseConfigured, SUPABASE_TIMEOUT_MS } from "../lib/supabase";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface User {
@@ -24,38 +24,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error('Timed out while loading auth session'));
-      }, timeoutMs);
-      promise
-        .then((value) => {
-          clearTimeout(timer);
-          resolve(value);
-        })
-        .catch((error) => {
-          clearTimeout(timer);
-          reject(error);
-        });
-    });
-  };
+  const initialAdminEmails = String((import.meta as any).env?.VITE_INITIAL_ADMIN_EMAILS || '').toLowerCase()
+    .split(',')
+    .map((s: string) => s.trim())
+    .filter(Boolean);
 
   useEffect(() => {
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-    }, SUPABASE_TIMEOUT_MS);
-
     if (!isSupabaseConfigured) {
       console.error('[Auth] Supabase credentials are missing.');
       setLoading(false);
-      return () => clearTimeout(safetyTimer);
+      return;
     }
 
+    let mounted = true;
+
     // Check active session
-    withTimeout(supabase.auth.getSession(), SUPABASE_TIMEOUT_MS)
+    supabase.auth.getSession()
       .then(({ data: { session } }) => {
+        if (!mounted) return;
         if (session?.user) {
           loadUserData(session.user);
         } else {
@@ -63,14 +49,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch((error) => {
-        console.error('[Auth] Session load timed out:', error);
-        setLoading(false);
+        console.error('[Auth] Error loading session:', error);
+        if (mounted) {
+          setLoading(false);
+        }
       });
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
       if (session?.user) {
         await loadUserData(session.user);
       } else {
@@ -81,22 +70,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
-      clearTimeout(safetyTimer);
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const loadUserData = async (supabaseUser: SupabaseUser): Promise<User> => {
+    console.log('[Auth] ===== START loadUserData =====');
+    console.log('[Auth] User ID:', supabaseUser.id);
+    console.log('[Auth] User Email:', supabaseUser.email);
+    
     try {
-      // Query the users table to get role and other info
-      const { data, error } = await supabase
-        .from('users')
+      console.log('[Auth] Loading profile data for user:', supabaseUser.id);
+      
+      // Query the profiles table to get role and other info with timeout
+      const profilePromise = supabase
+        .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
+      console.log('[Auth] Profile query started...');
+      
+      // Add a 5 second timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile query timeout')), 5000)
+      );
+
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as any;
+      
+      console.log('[Auth] Profile query completed');
+
       if (error) {
-        console.error('[Auth] Error loading user data:', error);
+        console.error('[Auth] ❌ Error loading user data from profiles table:', error);
+        console.error('[Auth] Error details:', JSON.stringify(error, null, 2));
+      } else {
+        console.log('[Auth] ✅ Profile data loaded:', data);
       }
 
       const fallbackUser: User = {
@@ -106,30 +115,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         _id: supabaseUser.id,
       };
 
-      const userData: User = data
-        ? {
-            id: data.id,
-            email: data.email,
-            role: data.role || 'user',
-            _id: data.id,
+      let userData: User;
+      const isInitialAdmin = initialAdminEmails.includes(String(supabaseUser.email || '').toLowerCase()) || 
+                            supabaseUser.email?.toLowerCase() === 'design@thunderlightmedia.com';
+      
+      console.log('[Auth] Is initial admin?', isInitialAdmin);
+      console.log('[Auth] Profile data exists?', !!data);
+      
+      if (data) {
+        console.log('[Auth] Profile role from database:', data.role);
+        // Update to admin if this is the designated admin email
+        if (isInitialAdmin && data.role !== 'admin') {
+          console.log('[Auth] Attempting to update user to admin role...');
+          const { data: updated, error: updateError } = await supabase
+            .from('profiles')
+            .update({ role: 'admin' })
+            .eq('id', data.id)
+            .select()
+            .single();
+          if (!updateError && updated) {
+            console.log('[Auth] ✅ Updated user to admin role');
+            userData = { id: updated.id, email: updated.email, role: 'admin', _id: updated.id };
+          } else {
+            console.warn('[Auth] ⚠️ Failed to update user to admin:', updateError);
+            userData = { id: data.id, email: data.email, role: data.role || 'user', _id: data.id };
           }
-        : fallbackUser;
+        } else {
+          userData = { id: data.id, email: data.email, role: data.role || 'user', _id: data.id };
+        }
+      } else {
+        // Profile doesn't exist, create it
+        console.log('[Auth] Profile does not exist, creating new profile...');
+        const { data: created, error: createError } = await supabase
+          .from('profiles')
+          .insert({ 
+            id: supabaseUser.id, 
+            email: (supabaseUser.email || '').toLowerCase(), 
+            role: isInitialAdmin ? 'admin' : 'user',
+            full_name: supabaseUser.user_metadata?.full_name || ''
+          })
+          .select()
+          .single();
+        if (createError) {
+          console.error('[Auth] ❌ Error provisioning profile:', createError);
+          userData = fallbackUser;
+        } else {
+          console.log('[Auth] ✅ Profile created successfully');
+          userData = { id: created.id, email: created.email, role: created.role || (isInitialAdmin ? 'admin' : 'user'), _id: created.id };
+        }
+      }
 
+      console.log('[Auth] Final user data:', { id: userData.id, email: userData.email, role: userData.role });
+      console.log('[Auth] ===== END loadUserData =====');
       setUser(userData);
       setIsAuthenticated(true);
       return userData;
     } catch (err) {
-      console.error('[Auth] Error in loadUserData:', err);
+      console.error('[Auth] ❌❌❌ EXCEPTION in loadUserData:', err);
+      const isInitialAdmin = initialAdminEmails.includes(String(supabaseUser.email || '').toLowerCase()) || 
+                            supabaseUser.email?.toLowerCase() === 'design@thunderlightmedia.com';
       const fallbackUser: User = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
-        role: 'user',
+        role: isInitialAdmin ? 'admin' : 'user',
         _id: supabaseUser.id,
       };
+      console.log('[Auth] Using fallback user:', fallbackUser);
       setUser(fallbackUser);
       setIsAuthenticated(true);
       return fallbackUser;
     } finally {
+      console.log('[Auth] Setting loading to false');
       setLoading(false);
     }
   };
@@ -140,29 +196,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Supabase credentials are missing.');
       }
 
-      setLoading(true);
       console.log('[Auth] Attempting login for:', email);
       
-      const { data, error } = await withTimeout(
-        supabase.auth.signInWithPassword({
-          email,
-          password,
-        }),
-        SUPABASE_TIMEOUT_MS
-      );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
       if (error) {
-        console.error('[Auth] Login error:', error);
+        console.error('[Auth] Login error:', error.message, error);
         throw new Error(error.message);
       }
 
       if (data.user) {
-        console.log('[Auth] Login successful');
-        return await loadUserData(data.user);
+        console.log('[Auth] Login successful, user ID:', data.user.id);
+        const provisional: User = {
+          id: data.user.id,
+          email: data.user.email || '',
+          role: initialAdminEmails.includes(String(data.user.email || '').toLowerCase()) || 
+                data.user.email?.toLowerCase() === 'design@thunderlightmedia.com' ? 'admin' : 'user',
+          _id: data.user.id,
+        };
+        setUser(provisional);
+        setIsAuthenticated(true);
+        const fullUserData = await loadUserData(data.user);
+        console.log('[Auth] Full user data loaded, role:', fullUserData.role);
+        return fullUserData;
       }
       throw new Error('Login succeeded but no user returned');
     } catch (error) {
-      setLoading(false);
       console.error('[Auth] Login failed:', error);
       throw error;
     }
@@ -177,7 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       console.log('[Auth] Attempting registration for:', email);
       
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
       });

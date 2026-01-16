@@ -16,7 +16,7 @@ import {
   LogIn
 } from "lucide-react"
 import { useAuth } from "@/contexts/SupabaseAuthContext"
-import { isSupabaseConfigured, resolvedSupabaseUrl, hasSupabaseAnonKey } from "@/lib/supabase"
+import { isSupabaseConfigured } from "@/lib/supabase"
 
 type LoginForm = {
   email: string
@@ -36,28 +36,37 @@ export default function Login() {
     try {
       setLoading(true)
       setLoginError(null)
+      console.log('[Login] Starting login process...');
       const loggedInUser = await login(data.email, data.password);
+
+      console.log('[Login] User logged in - FULL DATA:', JSON.stringify(loggedInUser, null, 2));
+      console.log('[Login] Role check:', {
+        role: loggedInUser?.role,
+        isAdmin: loggedInUser?.role === 'admin',
+        roleType: typeof loggedInUser?.role
+      });
 
       toast({
         title: "Success",
         description: "Logged in successfully",
       })
 
-      const locationState = location.state as { from?: { pathname?: string } } | null
-      const params = new URLSearchParams(location.search)
-      const redirectParam = params.get("redirect")
-      const redirectFromState = locationState?.from?.pathname
-      const redirectTo = redirectFromState || redirectParam
-
-      // Redirect admin users (any role except 'user') to admin dashboard
-      if (loggedInUser?.role && loggedInUser.role !== 'user') {
-        navigate(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/admin")
+      // Check if user has admin role
+      if (loggedInUser?.role === 'admin') {
+        console.log('[Login] ✅ Admin role detected - Redirecting to /admin');
+        navigate("/admin", { replace: true })
       } else {
+        console.log('[Login] ❌ Not admin role - Redirecting to home. Role was:', loggedInUser?.role);
+        const locationState = location.state as { from?: { pathname?: string } } | null
+        const params = new URLSearchParams(location.search)
+        const redirectParam = params.get("redirect")
+        const redirectFromState = locationState?.from?.pathname
+        const redirectTo = redirectFromState || redirectParam
         navigate(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/")
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during login"
-      console.error("Login error:", errorMessage)
+      console.error("[Login] Login error:", errorMessage, error)
       setLoginError(errorMessage)
       toast({
         variant: "destructive",
@@ -80,17 +89,13 @@ export default function Login() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {!isSupabaseConfigured ? (
               <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                Supabase credentials are missing. Add `VITE_SUPABASE_URL` and
-                `VITE_SUPABASE_ANON_KEY` to your deployment environment and redeploy.
+                Supabase credentials are missing. Please contact the administrator.
               </div>
             ) : null}
-            <div className="rounded-md border border-muted bg-muted/50 p-3 text-xs text-muted-foreground">
-              Diagnostics: Supabase URL = {resolvedSupabaseUrl || "missing"} | anon key loaded = {hasSupabaseAnonKey ? "yes" : "no"}
-            </div>
             {loginError ? (
-              <div className="rounded-md border border-muted bg-muted/50 p-3 text-sm text-muted-foreground">
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                 {loginError.includes("Timed out")
-                  ? "Login timed out. This usually means the site cannot reach Supabase. Verify your Supabase URL/anon key and that the project is reachable."
+                  ? "Login timed out. Please try again or contact support if the issue persists."
                   : `Login failed: ${loginError}`}
               </div>
             ) : null}
@@ -100,6 +105,7 @@ export default function Login() {
                 id="email"
                 type="email"
                 placeholder="Enter your email"
+                autoComplete="email"
                 {...register("email", { required: true })}
               />
             </div>
@@ -109,6 +115,7 @@ export default function Login() {
                 id="password"
                 type="password"
                 placeholder="Enter your password"
+                autoComplete="current-password"
                 {...register("password", { required: true })}
               />
             </div>

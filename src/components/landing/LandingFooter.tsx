@@ -33,7 +33,7 @@ export function LandingFooter() {
                   alt={settings.siteName}
                   className="h-12 object-contain"
                   onError={(e) => {
-                    console.error('[LandingFooter] Logo failed to load:', getMediaUrl(settings.logoUrl));
+                    console.error('[LandingFooter] Logo failed to load:', settings.logoUrl ? getMediaUrl(settings.logoUrl) : 'undefined');
                     e.currentTarget.style.display = 'none';
                   }}
                 />
@@ -62,6 +62,18 @@ export function LandingFooter() {
           <div>
             <h4 className={`font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Quick Links</h4>
             <ul className="space-y-2">
+              <li>
+                <a
+                  href="/"
+                  className={`text-sm transition-colors ${
+                    isDark
+                      ? 'text-gray-400 hover:text-cyan-400'
+                      : 'text-gray-600 hover:text-blue-600'
+                  }`}
+                >
+                  Home
+                </a>
+              </li>
               <li>
                 <button
                   onClick={() => scrollToSection('services')}

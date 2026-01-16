@@ -1,10 +1,48 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark" style="color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FlowPortal</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <style>
+      /* Prevent FOUC - hide body until theme classes are confirmed */
+      html:not(.theme-ready) body {
+        visibility: hidden;
+        opacity: 0;
+      }
+      html.theme-ready body {
+        visibility: visible;
+        opacity: 1;
+        transition: opacity 0.05s ease-in;
+      }
+    </style>
+    <script>
+      // Apply theme synchronously BEFORE any content renders
+      (function() {
+        const root = document.documentElement;
+        try {
+          const savedTheme = localStorage.getItem('flowportal-theme');
+          const theme = savedTheme || 'dark'; // Default to dark if no theme saved
+          
+          // Remove any existing theme classes and add the correct one
+          root.classList.remove('light', 'dark');
+          root.classList.add(theme);
+          
+          // Set color-scheme for native browser elements
+          root.style.colorScheme = theme;
+          
+          // Mark theme as ready
+          root.classList.add('theme-ready');
+        } catch (e) {
+          // If localStorage fails, default to dark
+          root.classList.remove('light');
+          root.classList.add('dark');
+          root.style.colorScheme = 'dark';
+          root.classList.add('theme-ready');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

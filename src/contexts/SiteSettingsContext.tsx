@@ -80,7 +80,21 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => 
 };
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<SiteSettings | null>(FALLBACK_SETTINGS);
+  // Initialize with fallback settings immediately
+  const [settings, setSettings] = useState<SiteSettings | null>(() => {
+    // Try to get cached settings from localStorage for instant load
+    try {
+      const cached = localStorage.getItem('flowportal-settings-cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        console.log('[SiteSettingsContext] Loaded cached settings from localStorage');
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('[SiteSettingsContext] Failed to load cached settings:', e);
+    }
+    return FALLBACK_SETTINGS;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,14 +108,23 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         setSettings((current) => current ?? FALLBACK_SETTINGS);
         return;
       }
-      console.log('[SiteSettingsContext] Fetching site settings');
+      console.log('[SiteSettingsContext] Fetching site settings from Supabase');
       const data = await withTimeout(getPublicSiteSettings(), SUPABASE_TIMEOUT_MS);
       console.log('[SiteSettingsContext] Settings loaded:', data);
       if (!data) {
-        console.warn('[SiteSettingsContext] No settings returned, leaving settings as null');
+        console.warn('[SiteSettingsContext] No settings returned, using fallback');
         setSettings(FALLBACK_SETTINGS);
         return;
       }
+      
+      // Cache settings in localStorage for instant load on next visit
+      try {
+        localStorage.setItem('flowportal-settings-cache', JSON.stringify(data));
+        console.log('[SiteSettingsContext] Cached settings to localStorage');
+      } catch (e) {
+        console.warn('[SiteSettingsContext] Failed to cache settings:', e);
+      }
+      
       setSettings(data);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load site settings';
@@ -117,6 +140,36 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     fetchSettings();
   }, []);
 
+  const updateFaviconLinks = (faviconUrl?: string) => {
+    const resolvedUrl = faviconUrl ? getMediaUrl(faviconUrl) : '/favicon.ico';
+    const lowerUrl = resolvedUrl.toLowerCase();
+    let type = 'image/x-icon';
+    if (lowerUrl.endsWith('.png')) {
+      type = 'image/png';
+    } else if (lowerUrl.endsWith('.svg')) {
+      type = 'image/svg+xml';
+    } else if (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg')) {
+      type = 'image/jpeg';
+    }
+
+    const existingFavicons = document.querySelectorAll("link[rel*='icon']");
+    existingFavicons.forEach((favicon) => favicon.remove());
+
+    const iconLink = document.createElement('link');
+    iconLink.rel = 'icon';
+    iconLink.type = type;
+    iconLink.href = resolvedUrl;
+    document.head.appendChild(iconLink);
+
+    const shortcutLink = document.createElement('link');
+    shortcutLink.rel = 'shortcut icon';
+    shortcutLink.type = type;
+    shortcutLink.href = resolvedUrl;
+    document.head.appendChild(shortcutLink);
+
+    console.log('[SiteSettingsContext] Updated favicon:', resolvedUrl);
+  };
+
   // Update document title and favicon when settings change
   useEffect(() => {
     if (settings) {
@@ -127,20 +180,27 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       console.log('[SiteSettingsContext] Updated page title:', document.title);
 
       // Update favicon
-      if (settings.faviconUrl) {
-        const faviconUrl = getMediaUrl(settings.faviconUrl);
+      updateFaviconLinks(settings.faviconUrl);
 
-        // Remove existing favicons
-        const existingFavicons = document.querySelectorAll("link[rel*='icon']");
-        existingFavicons.forEach(favicon => favicon.remove());
-
-        // Add new favicon
-        const link = document.createElement('link');
-        link.rel = 'icon';
-        link.type = 'image/x-icon';
-        link.href = faviconUrl;
-        document.head.appendChild(link);
-        console.log('[SiteSettingsContext] Updated favicon:', faviconUrl);
+      // Apply theme from settings and save to localStorage
+      if (settings.defaultTheme) {
+        const root = window.document.documentElement;
+        const currentTheme = root.classList.contains('light') ? 'light' : 'dark';
+        
+        // Only update if theme is different to avoid flashing
+        if (currentTheme !== settings.defaultTheme) {
+          console.log('[SiteSettingsContext] Theme changed from', currentTheme, 'to', settings.defaultTheme);
+          root.classList.remove("light", "dark");
+          root.classList.add(settings.defaultTheme);
+        }
+        
+        // Always save to localStorage for instant application on next load
+        try {
+          localStorage.setItem('flowportal-theme', settings.defaultTheme);
+          console.log('[SiteSettingsContext] Saved theme to localStorage:', settings.defaultTheme);
+        } catch (e) {
+          console.warn('[SiteSettingsContext] Failed to save theme to localStorage:', e);
+        }
       }
     }
   }, [settings]);

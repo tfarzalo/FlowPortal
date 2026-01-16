@@ -70,7 +70,11 @@ export function BookingForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await submitBooking(data);
+      const bookingData = {
+        ...data,
+        message: data.message || '', // Ensure message is always a string
+      };
+      const response = await submitBooking(bookingData);
       console.log('Booking submitted successfully:', response);
       toast.success(response.message || "Booking request submitted successfully!");
       form.reset();
@@ -119,15 +123,19 @@ export function BookingForm() {
                       name="fullName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Full Name *</FormLabel>
+                          <FormLabel className={isDark ? 'text-gray-300' : 'text-gray-700'}>Full Name *</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="John Doe"
-                              className="bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                              className={
+                                isDark
+                                  ? 'bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500'
+                                  : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                              }
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-500" />
                         </FormItem>
                       )}
                     />
@@ -137,16 +145,20 @@ export function BookingForm() {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Phone Number *</FormLabel>
+                          <FormLabel className={isDark ? 'text-gray-300' : 'text-gray-700'}>Phone Number *</FormLabel>
                           <FormControl>
                             <Input
                               type="tel"
                               placeholder="(541) 555-0123"
-                              className="bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                              className={
+                                isDark
+                                  ? 'bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500'
+                                  : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                              }
                               {...field}
                             />
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-500" />
                         </FormItem>
                       )}
                     />
@@ -157,16 +169,20 @@ export function BookingForm() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300">Email Address *</FormLabel>
+                        <FormLabel className={isDark ? 'text-gray-300' : 'text-gray-700'}>Email Address *</FormLabel>
                         <FormControl>
                           <Input
                             type="email"
                             placeholder="john@example.com"
-                            className="bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                            className={
+                              isDark
+                                ? 'bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500'
+                                : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                            }
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -176,22 +192,30 @@ export function BookingForm() {
                     name="service"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300">Service Needed *</FormLabel>
+                        <FormLabel className={isDark ? 'text-gray-300' : 'text-gray-700'}>Service Needed *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500">
+                            <SelectTrigger className={
+                              isDark
+                                ? 'bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500'
+                                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                            }>
                               <SelectValue placeholder="Select a service" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="bg-slate-900 border-slate-700">
+                          <SelectContent className={isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}>
                             {services.map((service) => (
-                              <SelectItem key={service} value={service} className="text-white hover:bg-slate-800">
+                              <SelectItem 
+                                key={service} 
+                                value={service} 
+                                className={isDark ? 'text-white hover:bg-slate-800' : 'text-gray-900 hover:bg-gray-100'}
+                              >
                                 {service}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -202,19 +226,29 @@ export function BookingForm() {
                       name="preferredDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300 flex items-center gap-2">
+                          <FormLabel className={`${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-2`}>
                             <Calendar className="h-4 w-4" />
                             Preferred Date *
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              type="date"
-                              min={getTodayDate()}
-                              className="bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <Input
+                                type="date"
+                                min={getTodayDate()}
+                                className={`w-full cursor-pointer ${
+                                  isDark
+                                    ? 'bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500 [color-scheme:dark]'
+                                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 [color-scheme:light]'
+                                }`}
+                                onClick={(e) => {
+                                  // Trigger the date picker when clicking anywhere on the field
+                                  e.currentTarget.showPicker?.();
+                                }}
+                                {...field}
+                              />
+                            </div>
                           </FormControl>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-500" />
                         </FormItem>
                       )}
                     />
@@ -224,25 +258,33 @@ export function BookingForm() {
                       name="preferredTime"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300 flex items-center gap-2">
+                          <FormLabel className={`${isDark ? 'text-gray-300' : 'text-gray-700'} flex items-center gap-2`}>
                             <Clock className="h-4 w-4" />
                             Preferred Time *
                           </FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500">
+                              <SelectTrigger className={
+                                isDark
+                                  ? 'bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500'
+                                  : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                              }>
                                 <SelectValue placeholder="Select time" />
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent className="bg-slate-900 border-slate-700">
+                            <SelectContent className={isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}>
                               {timeSlots.map((slot) => (
-                                <SelectItem key={slot} value={slot} className="text-white hover:bg-slate-800">
+                                <SelectItem 
+                                  key={slot} 
+                                  value={slot} 
+                                  className={isDark ? 'text-white hover:bg-slate-800' : 'text-gray-900 hover:bg-gray-100'}
+                                >
                                   {slot}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-500" />
                         </FormItem>
                       )}
                     />
@@ -253,15 +295,19 @@ export function BookingForm() {
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300">Service Address *</FormLabel>
+                        <FormLabel className={isDark ? 'text-gray-300' : 'text-gray-700'}>Service Address *</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="123 Main St, Newport, OR 97365"
-                            className="bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                            className={
+                              isDark
+                                ? 'bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500'
+                                : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                            }
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -271,15 +317,19 @@ export function BookingForm() {
                     name="message"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-300">Message/Details (Optional)</FormLabel>
+                        <FormLabel className={isDark ? 'text-gray-300' : 'text-gray-700'}>Message/Details (Optional)</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Describe your plumbing issue..."
-                            className="bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500 min-h-[100px]"
+                            className={`min-h-[100px] ${
+                              isDark
+                                ? 'bg-slate-900/50 border-slate-700 text-white placeholder:text-gray-500 focus:border-cyan-500'
+                                : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                            }`}
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage className="text-red-400" />
+                        <FormMessage className="text-red-500" />
                       </FormItem>
                     )}
                   />
@@ -288,27 +338,35 @@ export function BookingForm() {
                     control={form.control}
                     name="smsConsent"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-slate-700 p-4 bg-slate-900/30">
+                      <FormItem className={`flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 ${
+                        isDark
+                          ? 'border-slate-700 bg-slate-900/30'
+                          : 'border-gray-300 bg-gray-50'
+                      }`}>
                         <FormControl>
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            className="border-slate-600 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                            className={
+                              isDark
+                                ? 'border-slate-600 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500'
+                                : 'border-gray-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600'
+                            }
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-normal text-gray-300 cursor-pointer">
+                          <FormLabel className={`text-sm font-normal cursor-pointer ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                             By submitting this form and signing up for text messages, you consent to receive communications from Newport Plumbing in accordance with our{" "}
                             <a
                               href="https://newportplumbing.com/privacy-policy/"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-cyan-400 hover:text-cyan-300 underline"
+                              className={isDark ? 'text-cyan-400 hover:text-cyan-300 underline' : 'text-blue-600 hover:text-blue-700 underline'}
                             >
                               Privacy Policy
                             </a>. *
                           </FormLabel>
-                          <FormMessage className="text-red-400" />
+                          <FormMessage className="text-red-500" />
                         </div>
                       </FormItem>
                     )}

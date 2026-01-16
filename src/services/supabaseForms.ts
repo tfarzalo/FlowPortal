@@ -375,6 +375,7 @@ export async function submitForm(formType: string, formData: Record<string, unkn
     customer_email: customerEmail,
     customer_phone: customerPhone,
     status: 'new' as const,
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
   };
 
   const { data, error } = await supabase

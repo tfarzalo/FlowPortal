@@ -44,19 +44,25 @@ export const getApiUrl = (): string => {
 };
 
 /**
- * Construct a full media URL from a relative path
- * @param relativePath - The relative path from the server (e.g., /uploads/file.png)
+ * Construct a full media URL from a relative path or Supabase storage URL
+ * @param relativePath - The path from the database (could be Supabase URL or relative path)
  * @returns Full URL to the media file
  */
 export const getMediaUrl = (relativePath: string): string => {
   if (!relativePath) return '';
 
-  // If already a full URL, return as-is
+  // If already a full URL (including Supabase storage URLs), return as-is
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
     return relativePath;
   }
 
-  // Otherwise, prepend the API base URL
+  // If it's a Supabase storage path (starts with /storage/)
+  if (relativePath.startsWith('/storage/')) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    return `${supabaseUrl}${relativePath}`;
+  }
+
+  // Otherwise, prepend the API base URL (legacy support)
   const baseUrl = getApiUrl();
   return `${baseUrl}${relativePath}`;
 };

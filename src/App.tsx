@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
-import { ThemeProvider } from "./components/ui/theme-provider"
 import { Toaster } from "./components/ui/sonner"
 import { LandingPage } from "./pages/LandingPage"
 import { PageView } from "./pages/PageView"
@@ -22,45 +21,44 @@ import ErrorBoundary from "./components/ErrorBoundary"
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark" storageKey="ui-theme">
-        <AuthProvider>
-          <SiteSettingsProvider>
-            <Router>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<Login />} />
-              {/* Registration route removed - admin-only user creation */}
-              <Route path="/media" element={<MediaManagement />} />
+      {/* Removed ThemeProvider - theme is managed by SiteSettingsContext */}
+      <AuthProvider>
+        <SiteSettingsProvider>
+          <Router>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            {/* Registration route removed - admin-only user creation */}
+            <Route path="/media" element={<MediaManagement />} />
 
-              {/* Admin Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<AdminDashboard />} />
-                <Route path="pages" element={<PagesManagement />} />
-                <Route path="pages/new" element={<PageEditor />} />
-                <Route path="pages/edit/:id" element={<PageEditor />} />
-                <Route path="posts" element={<PostsManagement />} />
-                <Route path="media" element={<MediaManagement />} />
-                <Route path="form-entries" element={<FormEntriesManagement />} />
-                <Route path="form-configuration" element={<FormConfigurationManagement />} />
-                <Route path="users" element={<UsersManagement />} />
-                <Route path="settings" element={<ErrorBoundary><SiteSettings /></ErrorBoundary>} />
-              </Route>
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="pages" element={<PagesManagement />} />
+              <Route path="pages/new" element={<PageEditor />} />
+              <Route path="pages/edit/:id" element={<PageEditor />} />
+              <Route path="posts" element={<PostsManagement />} />
+              <Route path="media" element={<MediaManagement />} />
+              <Route path="form-entries" element={<FormEntriesManagement />} />
+              <Route path="form-configuration" element={<FormConfigurationManagement />} />
+              <Route path="users" element={<UsersManagement />} />
+              <Route path="settings" element={<ErrorBoundary><SiteSettings /></ErrorBoundary>} />
+            </Route>
 
-              {/* Dynamic page routes - must be last to avoid conflicts */}
-              <Route path="/:slug" element={<PageView />} />
-            </Routes>
-            </Router>
-            <Toaster />
-          </SiteSettingsProvider>
-        </AuthProvider>
-      </ThemeProvider>
+            {/* Dynamic page routes - must be last to avoid conflicts */}
+            <Route path="/:slug" element={<PageView />} />
+          </Routes>
+          </Router>
+          <Toaster />
+        </SiteSettingsProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

@@ -1,0 +1,6 @@
+CREATE OR REPLACE FUNCTION public.is_admin(uid uuid) RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$ SELECT COALESCE((SELECT role = 'admin' FROM public.users WHERE id = uid), false) $$;
+GRANT EXECUTE ON FUNCTION public.is_admin(uuid) TO authenticated, anon;
+DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='users_select_self_or_admin') THEN EXECUTE 'DROP POLICY users_select_self_or_admin ON public.users'; END IF; IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='users_update_self_or_admin') THEN EXECUTE 'DROP POLICY users_update_self_or_admin ON public.users'; END IF; IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='users' AND policyname='users_insert_self') THEN EXECUTE 'DROP POLICY users_insert_self ON public.users'; END IF; END $$;
+CREATE POLICY users_select_self_or_admin ON public.users FOR SELECT USING (auth.uid() = id OR public.is_admin(auth.uid()));
+CREATE POLICY users_update_self_or_admin ON public.users FOR UPDATE USING (auth.uid() = id OR public.is_admin(auth.uid()));
+CREATE POLICY users_insert_self ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
