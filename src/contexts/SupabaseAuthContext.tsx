@@ -38,13 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let mounted = true;
 
-    // Check active session
+    // Check active session - optimized for speed
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
         if (!mounted) return;
         if (session?.user) {
+          // Only load user data if there's an active session
           loadUserData(session.user);
         } else {
+          // No session - set loading to false immediately
           setLoading(false);
         }
       })

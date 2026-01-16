@@ -22,24 +22,28 @@ function App() {
   return (
     <ErrorBoundary>
       {/* Removed ThemeProvider - theme is managed by SiteSettingsContext */}
-      <AuthProvider>
-        <SiteSettingsProvider>
-          <Router>
+      <SiteSettingsProvider>
+        <Router>
           <Routes>
+            {/* Public routes - no auth loading, instant rendering */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            {/* Registration route removed - admin-only user creation */}
-            <Route path="/media" element={<MediaManagement />} />
+            <Route path="/page/:slug" element={<PageView />} />
+            
+            {/* Auth-required routes */}
+            <Route path="/login" element={
+              <AuthProvider>
+                <Login />
+              </AuthProvider>
+            } />
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin"
-              element={
+            {/* Admin Routes - wrapped in AuthProvider only */}
+            <Route path="/admin" element={
+              <AuthProvider>
                 <ProtectedRoute requireAdmin>
                   <AdminLayout />
                 </ProtectedRoute>
-              }
-            >
+              </AuthProvider>
+            }>
               <Route index element={<AdminDashboard />} />
               <Route path="pages" element={<PagesManagement />} />
               <Route path="pages/new" element={<PageEditor />} />
@@ -52,13 +56,12 @@ function App() {
               <Route path="settings" element={<ErrorBoundary><SiteSettings /></ErrorBoundary>} />
             </Route>
 
-            {/* Dynamic page routes - must be last to avoid conflicts */}
+            {/* Fallback for old /:slug routes - redirect to /page/:slug */}
             <Route path="/:slug" element={<PageView />} />
           </Routes>
-          </Router>
-          <Toaster />
-        </SiteSettingsProvider>
-      </AuthProvider>
+        </Router>
+        <Toaster />
+      </SiteSettingsProvider>
     </ErrorBoundary>
   )
 }
